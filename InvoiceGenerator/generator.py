@@ -127,9 +127,8 @@ class Invoice:
         self.pdf.showPage()
         self.pdf.save()
 
-        f = open(self.pdffile.name)
-        data = f.read()
-        f.close()
+        with open(self.pdffile.name) as f:
+            data = f.read()
 
         os.unlink(self.pdffile.name)
 
@@ -351,6 +350,5 @@ if __name__ == "__main__":
     invoice.addItem(item1)
     invoice.addItem(item2)
 
-    f = open("test.pdf", "w")
-    f.write(invoice.getContent())
-    f.close()
+    with open("test.pdf", "w") as f:
+        f.write(invoice.getContent())
