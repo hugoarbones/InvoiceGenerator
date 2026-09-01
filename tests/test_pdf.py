@@ -164,24 +164,39 @@ class TestBaseInvoice(unittest.TestCase):
         self.assertTrue(u"Creator: blah" in pdf_string)
 
     def test_generate_with_euro_and_spanish(self):
+        old_lang = os.environ.get("INVOICE_LANG")
         os.environ["INVOICE_LANG"] = "es"
-        invoice = Invoice(Client('Kkkk'), Provider('Pupik'), Creator('blah'))
-        invoice.number = 'F20140001'
-        invoice.use_tax = True
-        invoice.add_item(Item(32, 600))
-        invoice.add_item(Item(60, 50, tax=10))
-        invoice.add_item(Item(50, 60, tax=5))
-        invoice.add_item(Item(5, 600, tax=50))
-        invoice.currency_locale = 'es_ES.UTF-8'
-        invoice.currency = 'EUR'
 
         tmp_file = NamedTemporaryFile(delete=False)
+        tmp_path = tmp_file.name
+        tmp_file.close()
+        try:
+            invoice = Invoice(Client('Kkkk'), Provider('Pupik'), Creator('blah'))
+            invoice.number = 'F20140001'
+            invoice.use_tax = True
+            invoice.add_item(Item(32, 600))
+            invoice.add_item(Item(60, 50, tax=10))
+            invoice.add_item(Item(50, 60, tax=5))
+            invoice.add_item(Item(5, 600, tax=50))
+            invoice.currency_locale = 'es_ES.UTF-8'
+            invoice.currency = 'EUR'
 
-        pdf = SimpleInvoice(invoice)
-        pdf.gen(tmp_file.name)
+            pdf = SimpleInvoice(invoice)
+            pdf.gen(tmp_path)
 
-        pdf = PdfReader(tmp_file)
-        pdf_string = pdf.pages[0].extract_text()
-        self.assertTrue(u"30.150,00 €" in pdf_string)
-        self.assertTrue(u"Total con impuesto: 30.150,00 €" in pdf_string)
-        self.assertTrue(u"Creado por: blah" in pdf_string)
+            with open(tmp_path, "rb") as fh:
+                reader = PdfReader(fh)
+                pdf_string = reader.pages[0].extract_text() or ""
+
+            self.assertIn(u"30.150,00 €", pdf_string)
+            self.assertIn(u"Total con impuesto: 30.150,00 €", pdf_string)
+            self.assertIn(u"Creado por: blah", pdf_string)
+        finally:
+            if old_lang is None:
+                os.environ.pop("INVOICE_LANG", None)
+            else:
+                os.environ["INVOICE_LANG"] = old_lang
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
